@@ -1,0 +1,57 @@
+{
+  "clear": "Clear",
+  "input_placeholder": "Ask me anything...",
+  "send": "Send",
+  "settings": {
+    "api_endpoint": {
+      "description": "Base URL for the API (default Ollama uses http://localhost:11434/v1)",
+      "label": "API Endpoint"
+    },
+    "api_key": {
+      "description": "API key for hosted providers (stored locally and never shared)",
+      "label": "API Key"
+    },
+    "custom_models": {
+      "description": "Comma-separated model ids always offered in the panel picker",
+      "label": "Custom Models"
+    },
+    "default_model": {
+      "description": "Model used until you pick another one in the panel",
+      "label": "Default Model"
+    },
+    "glyph": {
+      "label": "Bar Icon"
+    },
+    "max_history": {
+      "description": "Number of messages to keep in conversation context",
+      "label": "Max History"
+    },
+    "show_commands": {
+      "description": "Show executed commands in the chat",
+      "label": "Show Commands"
+    },
+    "tool_blocklist": {
+      "description": "Comma-separated commands never allowed",
+      "label": "Blocked Commands"
+    },
+    "tool_permission": {
+      "allow": "Allow — Run automatically",
+      "ask": "Ask — Prompt before every command",
+      "description": "When the AI can run terminal commands",
+      "label": "Tool Permission",
+      "off": "Off — No tools"
+    },
+    "web_search_enabled": {
+      "description": "Allow AI Chat to use DuckDuckGo search and fetch public pages",
+      "label": "Web Search"
+    }
+  },
+  "status_error": "Error",
+  "status_idle": "Idle",
+  "status_offline": "Offline",
+  "status_online": "Online",
+  "status_thinking": "Thinking...",
+  "status_tool": "Running command...",
+  "title": "AI Chat",
+  "tooltip": "AI Chat — {status}"
+}

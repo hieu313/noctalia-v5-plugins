@@ -20,6 +20,7 @@ noctalia msg plugins enable hieunm3103/modern-clock
 | Plugin | ID | What it does |
 | --- | --- | --- |
 | [Modern Clock](modern-clock/) | `hieunm3103/modern-clock` | Three-line desktop clock — weekday, date, time — with per-line format, size, colour and font. |
+| [AI Chat](aichat/) | `hieunm3103/aichat` | LLM chat panel with shell tools, web search and any OpenAI-compatible endpoint or model. |
 
 ## Layout
 
