@@ -1,0 +1,203 @@
+id          = "hieunm3103/modern-clock"
+name        = "Modern Clock"
+version     = "2.0.0"
+plugin_api  = 19
+author      = "hieunm3103"
+license     = "MIT"
+dependencies = []
+deprecated  = false
+icon        = "clock"
+description = "A modern looking clock desktop widget that will tell you the time. (duh)"
+tags        = ["desktop", "clock", "time", "fun"]
+
+[[desktop_widget]]
+id    = "clock"
+entry = "widget.luau"
+
+  # ── Layout ────────────────────────────────────────────────────────────────
+
+  [[desktop_widget.setting]]
+  key             = "uppercase"
+  type            = "bool"
+  label_key       = "settings.uppercase.label"
+  description_key = "settings.uppercase.description"
+  default         = true
+
+  [[desktop_widget.setting]]
+  key             = "opacity"
+  type            = "double"
+  label_key       = "settings.opacity.label"
+  description_key = "settings.opacity.description"
+  default         = 1.0
+  min             = 0.0
+  max             = 1.0
+
+  [[desktop_widget.setting]]
+  key             = "padding_h"
+  type            = "int"
+  label_key       = "settings.padding_h.label"
+  description_key = "settings.padding_h.description"
+  default         = 0
+  min             = 0
+  max             = 200
+
+  [[desktop_widget.setting]]
+  key             = "gap"
+  type            = "int"
+  label_key       = "settings.gap.label"
+  description_key = "settings.gap.description"
+  default         = 4
+  min             = 0
+  max             = 64
+  advanced        = true
+
+  [[desktop_widget.setting]]
+  key             = "timezone"
+  type            = "string"
+  label_key       = "settings.timezone.label"
+  description_key = "settings.timezone.description"
+  default         = ""
+  advanced        = true
+
+  [[desktop_widget.setting]]
+  key             = "font_file"
+  type            = "file"
+  label_key       = "settings.font_file.label"
+  description_key = "settings.font_file.description"
+  default         = "Anurati-Regular.otf"
+  extensions      = [".ttf", ".otf"]
+  advanced        = true
+
+  # ── Day line ──────────────────────────────────────────────────────────────
+
+  [[desktop_widget.setting]]
+  key             = "show_day"
+  type            = "bool"
+  label_key       = "settings.show_day.label"
+  description_key = "settings.show_day.description"
+  default         = true
+
+  [[desktop_widget.setting]]
+  key             = "day_format"
+  type            = "string"
+  label_key       = "settings.day_format.label"
+  description_key = "settings.day_format.description"
+  default         = "%A"
+  visible_when    = { key = "show_day", values = ["true"] }
+
+  [[desktop_widget.setting]]
+  key             = "day_size"
+  type            = "int"
+  label_key       = "settings.day_size.label"
+  description_key = "settings.day_size.description"
+  default         = 24
+  min             = 6
+  max             = 200
+  visible_when    = { key = "show_day", values = ["true"] }
+
+  [[desktop_widget.setting]]
+  key             = "day_color"
+  type            = "color"
+  label_key       = "settings.day_color.label"
+  description_key = "settings.day_color.description"
+  default         = "primary"
+  visible_when    = { key = "show_day", values = ["true"] }
+
+  [[desktop_widget.setting]]
+  key             = "day_font"
+  type            = "string"
+  label_key       = "settings.day_font.label"
+  description_key = "settings.day_font.description"
+  default         = ""
+  visible_when    = { key = "show_day", values = ["true"] }
+  advanced        = true
+
+  # ── Date line ─────────────────────────────────────────────────────────────
+
+  [[desktop_widget.setting]]
+  key             = "show_date"
+  type            = "bool"
+  label_key       = "settings.show_date.label"
+  description_key = "settings.show_date.description"
+  default         = true
+
+  [[desktop_widget.setting]]
+  key             = "date_format"
+  type            = "string"
+  label_key       = "settings.date_format.label"
+  description_key = "settings.date_format.description"
+  default         = "%d %b %Y"
+  visible_when    = { key = "show_date", values = ["true"] }
+
+  [[desktop_widget.setting]]
+  key             = "date_size"
+  type            = "int"
+  label_key       = "settings.date_size.label"
+  description_key = "settings.date_size.description"
+  default         = 15
+  min             = 6
+  max             = 200
+  visible_when    = { key = "show_date", values = ["true"] }
+
+  [[desktop_widget.setting]]
+  key             = "date_color"
+  type            = "color"
+  label_key       = "settings.date_color.label"
+  description_key = "settings.date_color.description"
+  default         = "secondary"
+  visible_when    = { key = "show_date", values = ["true"] }
+
+  [[desktop_widget.setting]]
+  key             = "date_font"
+  type            = "string"
+  label_key       = "settings.date_font.label"
+  description_key = "settings.date_font.description"
+  default         = ""
+  visible_when    = { key = "show_date", values = ["true"] }
+  advanced        = true
+
+  # ── Time line ─────────────────────────────────────────────────────────────
+
+  [[desktop_widget.setting]]
+  key             = "time_style"
+  type            = "select"
+  label_key       = "settings.time_style.label"
+  description_key = "settings.time_style.description"
+  default         = "24h"
+  options = [
+    { value = "24h", label_key = "settings.time_style.24h" },
+    { value = "12h", label_key = "settings.time_style.12h" },
+    { value = "custom", label_key = "settings.time_style.custom" },
+  ]
+
+  [[desktop_widget.setting]]
+  key             = "time_format"
+  type            = "string"
+  label_key       = "settings.time_format.label"
+  description_key = "settings.time_format.description"
+  default         = "- %H:%M -"
+  visible_when    = { key = "time_style", values = ["custom"] }
+
+  [[desktop_widget.setting]]
+  key             = "time_size"
+  type            = "int"
+  label_key       = "settings.time_size.label"
+  description_key = "settings.time_size.description"
+  default         = 15
+  min             = 6
+  max             = 200
+
+  [[desktop_widget.setting]]
+  key             = "time_color"
+  type            = "color"
+  label_key       = "settings.time_color.label"
+  description_key = "settings.time_color.description"
+  default         = "secondary"
+
+  [[desktop_widget.setting]]
+  key             = "time_font"
+  type            = "string"
+  label_key       = "settings.time_font.label"
+  description_key = "settings.time_font.description"
+  default         = ""
+  advanced        = true

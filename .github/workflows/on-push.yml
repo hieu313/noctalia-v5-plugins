@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: ${{ github.repository == 'noctalia-dev/community-plugins' }}
+    if: ${{ github.repository == 'hieu313/noctalia-v5-plugins' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

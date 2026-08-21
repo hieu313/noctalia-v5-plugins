@@ -1,1 +1,0 @@
-noctalia.mkdirAll("~/Config-Swap")

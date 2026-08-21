@@ -1,0 +1,94 @@
+{
+  "notify": {
+    "bad_timezone": "Unknown timezone \"{zone}\" — falling back to system local time."
+  },
+  "settings": {
+    "uppercase": {
+      "label": "Uppercase",
+      "description": "Render every line in capitals."
+    },
+    "opacity": {
+      "label": "Text opacity",
+      "description": "Opacity applied to all three lines."
+    },
+    "padding_h": {
+      "label": "Extra horizontal padding",
+      "description": "Adds space to both sides of the clock."
+    },
+    "gap": {
+      "label": "Line spacing",
+      "description": "Vertical gap between the day, date and time lines, in pixels."
+    },
+    "timezone": {
+      "label": "Timezone",
+      "description": "IANA zone name such as Asia/Ho_Chi_Minh. Leave empty for system local time."
+    },
+    "font_file": {
+      "label": "Font file",
+      "description": "A .ttf or .otf shipped with the plugin or anywhere on disk, used for every line that has no font of its own."
+    },
+    "show_day": {
+      "label": "Show day",
+      "description": "Display the weekday line."
+    },
+    "day_format": {
+      "label": "Day format",
+      "description": "strftime pattern for the first line, e.g. %A for the full weekday name."
+    },
+    "day_size": {
+      "label": "Day font size",
+      "description": "Font size of the weekday line, in pixels."
+    },
+    "day_color": {
+      "label": "Day colour",
+      "description": "A palette role such as primary, or a hex colour."
+    },
+    "day_font": {
+      "label": "Day font family",
+      "description": "Family name of an installed font. Leave empty to use the font file above."
+    },
+    "show_date": {
+      "label": "Show date",
+      "description": "Display the date line."
+    },
+    "date_format": {
+      "label": "Date format",
+      "description": "strftime pattern for the second line, e.g. %d %b %Y."
+    },
+    "date_size": {
+      "label": "Date font size",
+      "description": "Font size of the date line, in pixels."
+    },
+    "date_color": {
+      "label": "Date colour",
+      "description": "A palette role such as secondary, or a hex colour."
+    },
+    "date_font": {
+      "label": "Date font family",
+      "description": "Family name of an installed font. Leave empty to use the font file above."
+    },
+    "time_style": {
+      "label": "Time style",
+      "description": "Pick a 24- or 12-hour clock, or write your own pattern.",
+      "24h": "24-hour (- 18:00 -)",
+      "12h": "12-hour (- 6:00 PM -)",
+      "custom": "Custom pattern"
+    },
+    "time_format": {
+      "label": "Time format",
+      "description": "strftime pattern for the third line, e.g. - %H:%M:%S -."
+    },
+    "time_size": {
+      "label": "Time font size",
+      "description": "Font size of the time line, in pixels."
+    },
+    "time_color": {
+      "label": "Time colour",
+      "description": "A palette role such as secondary, or a hex colour."
+    },
+    "time_font": {
+      "label": "Time font family",
+      "description": "Family name of an installed font. Leave empty to use the font file above."
+    }
+  }
+}
