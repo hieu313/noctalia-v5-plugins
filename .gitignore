@@ -3,3 +3,7 @@ noctalia.d.luau
 
 
 /.github/workflows/scripts/__pycache__
+
+# Local Claude Code state; only skills are shared.
+/.claude/*
+!/.claude/skills/
