@@ -128,9 +128,10 @@ local function loadApiKey()
   local endpoint = noctalia.getConfig("api_endpoint") or "https://opencode.ai/zen/go/v1"
   if not isTrustedOpenCodeEndpoint(endpoint) then return "" end
   local ok, data = pcall(noctalia.readFile, noctalia.expandPath("~/.local/share/opencode/auth.json"))
-  if ok and data then
-    local parsed = noctalia.json.decode(data)
-    if parsed and parsed["opencode-go"] and parsed["opencode-go"].key then
+  if ok and type(data) == "string" then
+    local decoded, parsed = pcall(noctalia.json.decode, data)
+    if decoded and type(parsed) == "table" and type(parsed["opencode-go"]) == "table"
+      and type(parsed["opencode-go"].key) == "string" then
       return parsed["opencode-go"].key
     end
   end
@@ -351,7 +352,7 @@ local function retryOrFinalize(call, output)
   end
 end
 
-local function ddgSearchUrl(query)
+local function ddgSearchUrl()
   return "https://html.duckduckgo.com/html"
 end
 
@@ -363,13 +364,16 @@ startCurlWebRequest = function(call)
   call.transport = "curl"
   call.webAttempts = (call.webAttempts or 0) + 1
   call.startedAt = os.time()
+  -- A timed-out attempt keeps running in the background; only the callback of
+  -- the attempt still in flight may report a result for this tool call.
+  local attempt = call.webAttempts
   local pluginDir = noctalia.pluginDir()
   local parser = pluginDir and (pluginDir .. "/webparse.py") or nil
   local base = "curl --silent --show-error --max-time 12 --connect-timeout 5 --proto '=https' -A " .. shellQuote(WEB_USER_AGENT) .. " -H " .. shellQuote("Accept-Language: en-US,en;q=0.9") .. " "
   local fetchCmd
   local mode = call.kind == "fetch" and "fetch" or "search"
   if call.kind == "search" then
-    fetchCmd = base .. "-H " .. shellQuote("Referer: https://html.duckduckgo.com/") .. " --data " .. shellQuote(ddgSearchBody(call.query)) .. " " .. shellQuote(ddgSearchUrl(call.query)) .. " -w '\\n%{http_code}'"
+    fetchCmd = base .. "-H " .. shellQuote("Referer: https://html.duckduckgo.com/") .. " --data " .. shellQuote(ddgSearchBody(call.query)) .. " " .. shellQuote(ddgSearchUrl()) .. " -w '\\n%{http_code}'"
   else
     fetchCmd = base .. shellQuote(call.url) .. " -w '\\n%{http_code}'"
   end
@@ -380,8 +384,7 @@ startCurlWebRequest = function(call)
     command = fetchCmd
   end
   local accepted = noctalia.runAsync(command, function(result)
-    if call.status ~= "running" or call.transport ~= "curl" then return end
-    call.startedAt = os.time()
+    if call.status ~= "running" or call.transport ~= "curl" or call.webAttempts ~= attempt then return end
     local output = result.stdout
     if output == nil or output == "" then
       output = string.upper(call.kind == "fetch" and "WEB FETCH" or "WEB SEARCH") .. " FAILED: no response from the web request."
@@ -394,10 +397,6 @@ startCurlWebRequest = function(call)
   end
 end
 
-local function startWebRequest(call)
-  startCurlWebRequest(call)
-end
-
 local function runWebSearch(call, query)
   setStatus("searching")
   call.kind = "search"
@@ -408,14 +407,14 @@ local function runWebSearch(call, query)
     table.insert(M.pendingToolResults, { tool_call_id = call.tc.id, output = cached.output })
     return
   end
-  startWebRequest(call)
+  startCurlWebRequest(call)
 end
 
 local function runWebFetch(call, url)
   setStatus("fetching")
   call.kind = "fetch"
   call.url = url
-  startWebRequest(call)
+  startCurlWebRequest(call)
 end
 
 local function queueToolCalls(tool_calls)
@@ -571,9 +570,9 @@ function update()
     think(nil)
   end
 
-  for i, res in ipairs(M.pendingResponses) do
+  while #M.pendingResponses > 0 do
     if M.toolBatchActive then break end
-    M.pendingResponses[i] = nil
+    local res = table.remove(M.pendingResponses, 1)
 
     local ok, data = pcall(noctalia.json.decode, res.body)
     local retryable = false
@@ -639,8 +638,8 @@ function update()
     end
   end
 
-  for i, result in ipairs(M.pendingToolResults) do
-    M.pendingToolResults[i] = nil
+  while #M.pendingToolResults > 0 do
+    local result = table.remove(M.pendingToolResults, 1)
     addMessage("tool", result.output, { tool_call_id = result.tool_call_id })
     for _, call in ipairs(M.pendingToolCalls) do
       if call.tc.id == result.tool_call_id then
@@ -683,40 +682,45 @@ function update()
   end
 end
 
+-- The panel flips the status to "thinking" the moment it hands over an input,
+-- so a refusal has to put the service's own status back on screen.
+local function rejectInput(reason)
+  addMessage("assistant", reason)
+  setStatus(M.status or "idle")
+end
+
+local function submitInput(text)
+  M.apiRetries = 0
+  M.apiRetryPending = false
+  if M.pendingApproval then
+    rejectInput("Please approve or deny the pending command first.")
+    return
+  end
+  if M.toolBatchActive then
+    rejectInput("Please wait for the running commands to finish.")
+    return
+  end
+  addMessage("user", text)
+  think(nil)
+end
+
 function onIpc(event, payload)
   if event == "input" and type(payload) == "string" and payload ~= "" then
-    if M.pendingApproval then
-      addMessage("assistant", "Please approve or deny the pending command first.")
-      return
-    end
-    if M.toolBatchActive then
-      addMessage("assistant", "Please wait for the running commands to finish.")
-      return
-    end
-    addMessage("user", payload)
-    think(nil)
+    submitInput(payload)
   end
 end
 
+-- Clearing the key back to "" is what lets the same message be sent twice in a
+-- row: a watch only fires when the stored value actually changes.
 noctalia.state.watch("aichat.input", function(input)
-  if input and input ~= "" then
-    M.apiRetries = 0
-    M.apiRetryPending = false
-    if M.pendingApproval then
-      addMessage("assistant", "Please approve or deny the pending command first.")
-      return
-    end
-    if M.toolBatchActive then
-      addMessage("assistant", "Please wait for the running commands to finish.")
-      return
-    end
-    addMessage("user", input)
-    think(nil)
-  end
+  if type(input) ~= "string" or input == "" then return end
+  noctalia.state.set("aichat.input", "")
+  submitInput(input)
 end)
 
 noctalia.state.watch("aichat.clear", function(v)
   if v then
+    noctalia.state.set("aichat.clear", false)
     M.conversation = {}
     M.pendingToolCalls = {}
     M.pendingApproval = nil
@@ -790,7 +794,10 @@ noctalia.state.watch("aichat.set_model", function(v)
 end)
 
 noctalia.state.watch("aichat.refresh_models", function(v)
-  if v then fetchModels() noctalia.state.set("aichat.refresh_models", false) end
+  if v then
+    fetchModels()
+    noctalia.state.set("aichat.refresh_models", false)
+  end
 end)
 
 noctalia.setUpdateInterval(500)
@@ -800,6 +807,6 @@ if noctalia.state.get("aichat.model") == nil then
 end
 publishModels(nil)
 fetchModels()
-noctalia.state.set("aichat.status", "idle")
+setStatus("idle")
 noctalia.state.set("aichat.messages", {})
 noctalia.state.set("aichat.command_log", {})

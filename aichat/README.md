@@ -37,6 +37,11 @@ Click the bar icon or toggle the panel from a terminal:
 noctalia msg panel-toggle hieunm3103/aichat:chat
 ```
 
+The bar icon doubles as a status light: your configured `glyph` when idle, then a spinner while the
+model is thinking, a terminal icon while a command runs, a magnifier while searching the web, a
+download icon while fetching a page, and an alert icon on error. Hovering shows the same status as a
+tooltip.
+
 Type a message and press Enter. Replies render as formatted text — code blocks land in shaded boxes.
 Click the copy icon on any message to open its content in a selectable field, then copy the text
 manually.
@@ -89,6 +94,8 @@ noctalia msg plugin hieunm3103/aichat:agent all input "your message"
 - Web search uses DuckDuckGo's public HTML endpoint (no key or account). Search queries are sent to DuckDuckGo; results are cached in memory for five minutes and requests time out after 15 seconds. The model treats search results and fetched pages as untrusted data, not instructions.
 - Web requests run through a `curl | python3` subprocess (with the bundled `webparse.py`) rather than inside the Luau VM, because Noctalia enforces small per-callback CPU budgets.
 - For best results, use a model with tool-calling support.
+- Panel and tooltip strings come from `translations/<lang>.json` and fall back to English when a key
+  or a language file is missing. Setting labels use the `label_key` entries in the same file.
 
 ### Security
 
@@ -96,6 +103,6 @@ This is a trusted desktop plugin that runs the model's shell commands and makes 
 requests. This is the security model:
 
 - **API key handling** — the key is read at runtime only and never written to disk, state, or logs. Auto-detection from `~/.local/share/opencode/auth.json` happens only when the endpoint is exactly `https://opencode.ai` on port 443/absent. The key is sent to your configured endpoint (`/chat/completions` and `/models`) and nowhere else — never to DuckDuckGo or fetched pages, which carry only a browser User-Agent and an Accept-Language header.
-- **Command execution** — `ask` mode shows every command for approval; `allow` runs non-blocked commands automatically; `off` disables tools. The blocklist rejects destructive, interpreter, and network tools (`sudo`, `rm`, `sh`, `python`, `curl`, `ssh`, `git`, cloud CLIs, and more) as well as shell composition (`; | & > < \` $ \` and newlines). The blocklist is a safety guardrail, not a security boundary — raw shell execution in `allow` mode carries inherent risk.
+- **Command execution** — `ask` mode shows every command for approval; `allow` runs non-blocked commands automatically; `off` disables tools. The blocklist rejects destructive, interpreter, and network tools (`sudo`, `rm`, `sh`, `python`, `curl`, `ssh`, `git`, cloud CLIs, and more) as well as shell composition (`;` `|` `&` `>` `<` `` ` `` `$` `\` and newlines). The blocklist is a safety guardrail, not a security boundary — raw shell execution in `allow` mode carries inherent risk.
 - **Web fetch** — only accepts `https://` URLs, rejects credentials, private/loopback/link-local IPv4 and IPv6 addresses, `localhost`, `.local` hosts, and numeric/IP obfuscations. Requests verify TLS, follow no redirects, and are restricted to HTTPS. Parser input and output are size- and length-limited and control characters are stripped.
 - **Residual risks** — DNS rebinding cannot be fully prevented (Noctalia exposes no DNS resolution API), so `web_fetch` is only for well-known public URLs. Plugins run as trusted code, so a malicious model output combined with `allow` mode can still run commands the blocklist does not cover — review commands in `ask` mode for sensitive work.

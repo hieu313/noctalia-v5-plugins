@@ -1,10 +1,14 @@
 {
-  "clear": "Clear",
+  "approve": "Approve",
+  "command": "Command",
+  "deny": "Deny",
   "input_placeholder": "Ask me anything...",
-  "send": "Send",
+  "model_placeholder": "Model id (e.g. gpt-4o-mini)",
+  "no_models": "No models",
+  "role_user": "You",
   "settings": {
     "api_endpoint": {
-      "description": "Base URL for the API (default Ollama uses http://localhost:11434/v1)",
+      "description": "Base URL of an OpenAI-compatible API (e.g. http://localhost:11434/v1 for Ollama)",
       "label": "API Endpoint"
     },
     "api_key": {
@@ -47,11 +51,12 @@
     }
   },
   "status_error": "Error",
-  "status_idle": "Idle",
-  "status_offline": "Offline",
-  "status_online": "Online",
+  "status_fetching": "Fetching page...",
+  "status_idle": "Ready",
+  "status_running_tool": "Running command...",
+  "status_searching": "Searching web...",
   "status_thinking": "Thinking...",
-  "status_tool": "Running command...",
   "title": "AI Chat",
+  "tool_approval": "AI Chat wants to run:",
   "tooltip": "AI Chat — {status}"
 }

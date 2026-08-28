@@ -6,29 +6,48 @@ local customModelOpen = false
 local customModelText = ""
 local customModelKey = 0
 
-local markdownCache = {}
-local parseCache = {}
+-- Fall back to the English text when the host has no translation table for the
+-- key (older Noctalia builds, or a language file without it).
+local function tr(key, fallback, subst)
+  if type(noctalia.tr) ~= "function" then return fallback end
+  local ok, text = pcall(noctalia.tr, key, subst)
+  if ok and type(text) == "string" and text ~= "" and text ~= key then return text end
+  return fallback
+end
+
 local CACHE_MAX = 100
 
+-- Insertion-ordered so eviction drops the oldest entry rather than whichever
+-- key `pairs` happens to hand back first.
+local function newCache()
+  return { values = {}, order = {} }
+end
+
+local markdownCache = newCache()
+local parseCache = newCache()
+
 local function cacheGet(cache, key)
-  return cache[key]
+  return cache.values[key]
 end
 
 local function cacheSet(cache, key, value)
-  if cache[key] then return end
-  cache[key] = value
-  local count = 0
-  for _ in pairs(cache) do count += 1 end
-  if count > CACHE_MAX then
-    for k in pairs(cache) do
-      cache[k] = nil
-      break
-    end
+  if cache.values[key] ~= nil then return end
+  cache.values[key] = value
+  table.insert(cache.order, key)
+  if #cache.order > CACHE_MAX then
+    local oldest = table.remove(cache.order, 1)
+    cache.values[oldest] = nil
   end
 end
 
 noctalia.state.watch("aichat.copy_target", function(value)
-  copyTarget = (value == -1) and nil or value
+  -- -1 is the "no message selected" sentinel; `and nil or value` would hand
+  -- the sentinel straight back, so branch explicitly.
+  if value == -1 then
+    copyTarget = nil
+  else
+    copyTarget = value
+  end
   render()
 end)
 
@@ -90,7 +109,7 @@ local function parseMessage(content)
       text = text:gsub("#+%s*$", "")
       table.insert(nodes, { type = "heading", level = level, content = text })
       i = i + 1
-    elseif line:match("^%s*[-*_]+%s*$") and #line:gsub("%s", "") >= 3 then
+    elseif line:match("^%s*[-*_]+%s*$") and select(2, line:gsub("[-*_]", "")) >= 3 then
       table.insert(nodes, { type = "hr" })
       i = i + 1
     elseif line:match("^%s*>") then
@@ -122,7 +141,7 @@ local function parseMessage(content)
     else
       local buf = {}
       while i <= #lines and not lines[i]:match("^```") and not (lines[i]:match("^#+") and lines[i]:gsub("#+", ""):match("%S"))
-        and not (lines[i]:match("^%s*[-*_]+%s*$") and #lines[i]:gsub("%s", "") >= 3) and not lines[i]:match("^%s*>")
+        and not (lines[i]:match("^%s*[-*_]+%s*$") and select(2, lines[i]:gsub("[-*_]", "")) >= 3) and not lines[i]:match("^%s*>")
         and not lines[i]:match("^%s*[-*+]%s+") and not lines[i]:match("^%s*%d+[.)]%s+") do
         table.insert(buf, lines[i])
         i = i + 1
@@ -149,7 +168,14 @@ function render()
   end
 
   local statusColors = { idle = "on_surface/0.4", thinking = "primary", running_tool = "primary", searching = "primary", fetching = "primary", error = "error" }
-  local statusTexts = { idle = "Ready", thinking = "Thinking...", running_tool = "Running command...", searching = "Searching web...", fetching = "Fetching page...", error = "Error" }
+  local statusTexts = {
+    idle = tr("status_idle", "Ready"),
+    thinking = tr("status_thinking", "Thinking..."),
+    running_tool = tr("status_running_tool", "Running command..."),
+    searching = tr("status_searching", "Searching web..."),
+    fetching = tr("status_fetching", "Fetching page..."),
+    error = tr("status_error", "Error"),
+  }
 
   local displayMsgs = {}
   local copyContent = nil
@@ -194,7 +220,7 @@ function render()
           local command = showCommands and (toolCommand(toolCall) or commandsByToolCall[toolCall.id])
           if command then
             table.insert(contentNodes, ui.column({ gap = 2, padding = 8, fill = "surface_variant", radius = 6 }, {
-              ui.label({ text = "Command", fontSize = 11, color = "on_surface/0.5" }),
+              ui.label({ text = tr("command", "Command"), fontSize = 11, color = "on_surface/0.5" }),
               ui.label({ text = "$ " .. command, fontSize = 12, color = "primary", maxWidth = 380 }),
             }))
           end
@@ -204,7 +230,7 @@ function render()
         local isCopying = copyTarget == i
         table.insert(displayMsgs, ui.column({ key = "m" .. i, gap = 4, paddingH = 4, align = isUser and "end" or "start" }, {
           ui.row({ gap = 4, align = "center" }, {
-            ui.label({ text = isUser and "You" or "AI Chat", fontSize = 11, color = "on_surface/0.5" }),
+            ui.label({ text = isUser and tr("role_user", "You") or tr("title", "AI Chat"), fontSize = 11, color = "on_surface/0.5" }),
             ui.button({ glyph = isCopying and "close" or "copy", variant = "ghost", onClick = function() noctalia.state.set("aichat.copy_target", isCopying and -1 or i) end }),
           }),
           table.unpack(contentNodes),
@@ -216,14 +242,14 @@ function render()
   local pendingTool = noctalia.state.get("aichat.pending_tool")
   if pendingTool and type(pendingTool) == "table" and pendingTool.commands then
     local approvalChildren = {
-      ui.label({ text = "AI Chat wants to run:", fontSize = 12, color = "on_surface" }),
+      ui.label({ text = tr("tool_approval", "AI Chat wants to run:"), fontSize = 12, color = "on_surface" }),
     }
     for _, c in ipairs(pendingTool.commands) do
       table.insert(approvalChildren, ui.label({ text = c.command or "", fontSize = 12, color = "primary", maxWidth = 380 }))
     end
     table.insert(approvalChildren, ui.row({ gap = 8, align = "center" }, {
-      ui.button({ text = "Approve", variant = "primary", onClick = "onApproveTool" }),
-      ui.button({ text = "Deny", variant = "ghost", onClick = "onDenyTool" }),
+      ui.button({ text = tr("approve", "Approve"), variant = "primary", onClick = "onApproveTool" }),
+      ui.button({ text = tr("deny", "Deny"), variant = "ghost", onClick = "onDenyTool" }),
     }))
     table.insert(displayMsgs, ui.column({ key = "tool-approval", gap = 8, padding = 12, fill = "surface_variant", radius = 8 }, approvalChildren))
   end
@@ -233,14 +259,14 @@ function render()
     modelPicker = ui.input({
       key = "custom-model-" .. customModelKey,
       value = customModelText,
-      placeholder = "Model id (e.g. gpt-4o-mini)",
+      placeholder = tr("model_placeholder", "Model id (e.g. gpt-4o-mini)"),
       flexGrow = 1,
       focus = true,
       onChange = "onCustomModelChange",
       onSubmit = "onCustomModelSubmit",
     })
   else
-    modelPicker = ui.select({ options = models, selectedIndex = modelIdx, flexGrow = 1, placeholder = "No models", onChange = "onModelChange" })
+    modelPicker = ui.select({ options = models, selectedIndex = modelIdx, flexGrow = 1, placeholder = tr("no_models", "No models"), onChange = "onModelChange" })
   end
 
   local layout = {
@@ -259,11 +285,11 @@ function render()
     }))
   end
   table.insert(layout, ui.row({ gap = 8, padding = { left = 12, right = 12, top = 8, bottom = 4 }, align = "center" }, {
-    ui.input({ key = "msg-input-" .. inputKey, value = inputText, placeholder = "Ask me anything...", flexGrow = 1, focus = not customModelOpen, onChange = "onInputChange", onSubmit = "onSubmit" }),
+    ui.input({ key = "msg-input-" .. inputKey, value = inputText, placeholder = tr("input_placeholder", "Ask me anything..."), flexGrow = 1, focus = not customModelOpen, onChange = "onInputChange", onSubmit = "onSubmit" }),
     ui.button({ glyph = "send", variant = "primary", onClick = "onSubmit" }),
   }))
   table.insert(layout, ui.row({ gap = 12, padding = { left = 12, right = 12, top = 4, bottom = 12 }, align = "center" }, {
-    ui.label({ text = statusTexts[status] or "Ready", fontSize = 11, color = statusColors[status] or "on_surface/0.4" }),
+    ui.label({ text = statusTexts[status] or statusTexts.idle, fontSize = 11, color = statusColors[status] or "on_surface/0.4" }),
     ui.button({ glyph = "eraser", variant = "ghost", onClick = "onClear" }),
   }))
   panel.render(ui.column({ flexGrow = 1, gap = 0, align = "stretch" }, layout))

@@ -1,4 +1,11 @@
-local status = noctalia.state.get("aichat.status") or "idle"
+-- Fall back to the English text when the host has no translation table for the
+-- key (older Noctalia builds, or a language file without it).
+local function tr(key, fallback, subst)
+  if type(noctalia.tr) ~= "function" then return fallback end
+  local ok, text = pcall(noctalia.tr, key, subst)
+  if ok and type(text) == "string" and text ~= "" and text ~= key then return text end
+  return fallback
+end
 
 -- The idle glyph is the user's `glyph` setting; the busy states override it.
 local function idleGlyph()
@@ -7,35 +14,49 @@ local function idleGlyph()
   return "message-chatbot"
 end
 
+-- Keys must match the statuses the service publishes in `aichat.status`.
 local glyphs = {
   thinking = "loader",
-  tool = "terminal-2",
+  running_tool = "terminal-2",
+  searching = "search",
+  fetching = "download",
   error = "alert-circle",
 }
 
 local colors = {
   idle = "on_surface",
   thinking = "primary",
-  tool = "tertiary",
+  running_tool = "tertiary",
+  searching = "tertiary",
+  fetching = "tertiary",
   error = "error",
 }
 
-function update()
-  status = noctalia.state.get("aichat.status") or "idle"
+local statusText = {
+  idle = function() return tr("status_idle", "Ready") end,
+  thinking = function() return tr("status_thinking", "Thinking...") end,
+  running_tool = function() return tr("status_running_tool", "Running command...") end,
+  searching = function() return tr("status_searching", "Searching web...") end,
+  fetching = function() return tr("status_fetching", "Fetching page...") end,
+  error = function() return tr("status_error", "Error") end,
+}
+
+local function apply(status)
+  status = status or "idle"
   barWidget.setGlyph(glyphs[status] or idleGlyph())
   barWidget.setGlyphColor(colors[status] or "on_surface")
-  local tooltip = status == "idle" and "AI Chat — Ready" or "AI Chat — " .. status
-  barWidget.setTooltip(tooltip)
+  local text = (statusText[status] or statusText.idle)()
+  barWidget.setTooltip(tr("tooltip", "AI Chat — " .. text, { status = text }))
+end
+
+function update()
+  apply(noctalia.state.get("aichat.status"))
 end
 
 function onClick()
   noctalia.togglePanel("hieunm3103/aichat:chat")
 end
 
-noctalia.state.watch("aichat.status", function(newStatus)
-  status = newStatus or "idle"
-  barWidget.setGlyph(glyphs[status] or idleGlyph())
-  barWidget.setGlyphColor(colors[status] or "on_surface")
-  local tooltip = status == "idle" and "AI Chat — Ready" or "AI Chat — " .. status
-  barWidget.setTooltip(tooltip)
-end)
+noctalia.state.watch("aichat.status", apply)
+
+apply(noctalia.state.get("aichat.status"))
