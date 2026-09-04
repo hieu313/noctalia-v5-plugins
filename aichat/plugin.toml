@@ -1,6 +1,6 @@
 id = "hieunm3103/aichat"
 name = "AI Chat"
-version = "1.0.1"
+version = "1.0.2"
 plugin_api = 16
 author = "hieunm3103"
 license = "MIT"

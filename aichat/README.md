@@ -93,6 +93,10 @@ noctalia msg plugin hieunm3103/aichat:agent all input "your message"
 - API key auto-detection reads OpenCode Go's auth file at runtime only — never stored or logged.
 - Web search uses DuckDuckGo's public HTML endpoint (no key or account). Search queries are sent to DuckDuckGo; results are cached in memory for five minutes and requests time out after 15 seconds. The model treats search results and fetched pages as untrusted data, not instructions.
 - Web requests run through a `curl | python3` subprocess (with the bundled `webparse.py`) rather than inside the Luau VM, because Noctalia enforces small per-callback CPU budgets.
+- Requests are sent with `stream: true` and the SSE chunks are folded back into one reply before
+  the panel renders it — the reply still appears all at once. Some proxies only fill in content on
+  the streaming path and return an empty message for `stream: false`. Plain JSON completions are
+  still accepted, so non-streaming endpoints keep working.
 - For best results, use a model with tool-calling support.
 - Panel and tooltip strings come from `translations/<lang>.json` and fall back to English when a key
   or a language file is missing. Setting labels use the `label_key` entries in the same file.

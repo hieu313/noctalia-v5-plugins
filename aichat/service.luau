@@ -274,7 +274,7 @@ local function think(input)
     table.insert(msgs, { role = "user", content = input })
   end
 
-  local body = { model = model, messages = msgs }
+  local body = { model = model, messages = msgs, stream = true }
   if config.toolPermission ~= "off" then
     body.tools = {}
     table.insert(body.tools, TOOLS[1])
@@ -545,6 +545,83 @@ local function processToolQueue()
   finishToolBatch()
 end
 
+-- Some OpenAI-compatible endpoints only produce content in streaming mode: with
+-- `stream:false` they answer with a well-formed body whose content is empty. We
+-- therefore always ask for a stream and fold the SSE chunks back into the single
+-- non-streaming shape the rest of this file expects.
+local function parseSseCompletion(body)
+  local content = ""
+  local finishReason = nil
+  local order = {}
+  local byIndex = {}
+  local sawChunk = false
+
+  for rawLine in body:gmatch("[^\n]+") do
+    local line = rawLine:gsub("\r$", "")
+    local payload = line:match("^data:%s*(.+)$")
+    if payload and payload ~= "[DONE]" then
+      local ok, chunk = pcall(noctalia.json.decode, payload)
+      if ok and type(chunk) == "table" then
+        if type(chunk.error) == "table" then
+          return true, chunk
+        end
+        local choice = type(chunk.choices) == "table" and chunk.choices[1] or nil
+        if type(choice) == "table" then
+          sawChunk = true
+          if choice.finish_reason then finishReason = choice.finish_reason end
+          local delta = choice.delta
+          if type(delta) == "table" then
+            if type(delta.content) == "string" then content ..= delta.content end
+            if type(delta.tool_calls) == "table" then
+              for _, tc in ipairs(delta.tool_calls) do
+                if type(tc) == "table" then
+                  local idx = tonumber(tc.index) or 0
+                  local entry = byIndex[idx]
+                  if not entry then
+                    entry = { id = tc.id, type = tc.type or "function", ["function"] = { name = "", arguments = "" } }
+                    byIndex[idx] = entry
+                    table.insert(order, idx)
+                  end
+                  if tc.id then entry.id = tc.id end
+                  if tc.type then entry.type = tc.type end
+                  local fn = tc["function"]
+                  if type(fn) == "table" then
+                    if type(fn.name) == "string" and fn.name ~= "" then entry["function"].name = fn.name end
+                    if type(fn.arguments) == "string" then entry["function"].arguments ..= fn.arguments end
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  if not sawChunk then return false, nil end
+
+  table.sort(order)
+  local toolCalls = {}
+  for _, idx in ipairs(order) do table.insert(toolCalls, byIndex[idx]) end
+
+  local message = { role = "assistant", content = content }
+  if #toolCalls > 0 then
+    message.tool_calls = toolCalls
+    if finishReason == nil or finishReason == "stop" then finishReason = "tool_calls" end
+  end
+
+  return true, { choices = { { index = 0, message = message, finish_reason = finishReason } } }
+end
+
+-- Accepts either a plain JSON completion or an SSE stream of chunks.
+local function decodeResponse(body)
+  if type(body) ~= "string" or body == "" then return false, nil end
+  local ok, data = pcall(noctalia.json.decode, body)
+  if ok and type(data) == "table" then return true, data end
+  if body:find("data:", 1, true) then return parseSseCompletion(body) end
+  return false, nil
+end
+
 function update()
   for _, call in ipairs(M.pendingToolCalls) do
     if call.status == "running" and call.retryPending and os.time() >= (call.retryAt or 0) then
@@ -574,7 +651,7 @@ function update()
     if M.toolBatchActive then break end
     local res = table.remove(M.pendingResponses, 1)
 
-    local ok, data = pcall(noctalia.json.decode, res.body)
+    local ok, data = decodeResponse(res.body)
     local retryable = false
     local snippet = res.body or "no body"
     if ok and type(data) == "table" and type(data.error) == "table" then
