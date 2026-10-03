@@ -8,13 +8,13 @@
 
 id = "hieunm3103/toolkits"
 name = "Toolkits"
-version = "1.0.0"
-plugin_api = 13
+version = "1.1.0"
+plugin_api = 18
 author = "hieunm3103"
 license = "MIT"
 icon = "crosshair"
-description = "Personal toolbox: color picker, OCR, QR, palette, lens, annotate, measure, recording and more."
-tags = ["recording", "utility", "bar", "panel", "shortcut", "service", "hyprland", "niri", "sway"]
+description = "Personal toolbox: color picker, OCR, QR, palette, lens, annotate, measure, recording, translate and more."
+tags = ["recording", "utility", "language", "bar", "panel", "shortcut", "service", "hyprland", "niri", "sway"]
 dependencies = [
   "slurp",
   "grim",
@@ -42,6 +42,7 @@ dependencies = [
   "wl-screenrec",
   "wf-recorder",
   "mpv",
+  "wl-paste",
 ]
 
 # ── Panel entries (host-injected placement/size settings appear here, first in the settings editor) ──
@@ -65,7 +66,7 @@ capture_keys = ["Tab", "Backtab", "Shift+Tab", "Up", "Down", "Left", "Right", "R
 id = "panel-legacy"
 entry = "panel.luau"
 width = 380
-height = 260
+height = 350
 placement = "floating"
 position = "center"
 keyboard_focus = "on_demand"
@@ -79,6 +80,19 @@ width = 560
 height = 520
 placement = "floating"
 position = "center"
+
+# Translate panel: Google-Translate-style source/translation boxes, stacked
+# vertically. Opened from the "Translate" tile of the main panel.
+# Open with: noctalia msg panel-toggle hieunm3103/toolkits:translate
+[[panel]]
+id = "translate"
+entry = "translate.luau"
+width = 440
+height = 600
+placement = "floating"
+position = "center"
+keyboard_focus = "exclusive"
+capture_keys = ["ctrl+shift+c", "ctrl+shift+s", "ctrl+shift+x"]
 
 # ── Plugin-level settings (shared by every entry, edited in Settings → Plugins) ──
 
@@ -228,6 +242,44 @@ options = [
   { value = "legacy", label_key = "settings.panel_mode.options.legacy" },
 ]
 
+[[setting]]
+key = "translate-target-lang"
+type = "string"
+label_key = "settings.translate_target_lang.label"
+description_key = "settings.translate_target_lang.description"
+default = "en"
+
+[[setting]]
+key = "translate-provider"
+type = "select"
+label_key = "settings.translate_provider.label"
+description_key = "settings.translate_provider.description"
+default = "google"
+options = [
+  { value = "google", label_key = "settings.translate_provider.options.google" },
+  { value = "deepl", label_key = "settings.translate_provider.options.deepl" },
+]
+
+[[setting]]
+key = "translate-deepl-api-key"
+type = "string"
+label_key = "settings.translate_deepl_api_key.label"
+description_key = "settings.translate_deepl_api_key.description"
+default = ""
+visible_when = { key = "translate-provider", values = ["deepl"] }
+
+[[setting]]
+key = "translate-autofill"
+type = "select"
+label_key = "settings.translate_autofill.label"
+description_key = "settings.translate_autofill.description"
+default = "off"
+options = [
+  { value = "off", label_key = "settings.translate_autofill.options.off" },
+  { value = "selection", label_key = "settings.translate_autofill.options.selection" },
+  { value = "clipboard", label_key = "settings.translate_autofill.options.clipboard" },
+]
+
 # ── Entries ─────────────────────────────────────────────────────────────────
 
 # Bar widget: crosshair glyph; shows a pulsing red dot while recording.
@@ -245,3 +297,4 @@ entry = "shortcut.luau"
 [[service]]
 id = "service"
 entry = "service.luau"
+

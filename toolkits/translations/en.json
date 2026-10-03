@@ -156,6 +156,31 @@
       "description": "Skip the share popover and copy the link straight to clipboard. A notification confirms.",
       "label": "Copy Link Directly"
     },
+    "translate_autofill": {
+      "label": "Translate: Autofill on Open",
+      "description": "Fill the source box with new text from the selection or the clipboard when the Translate panel opens",
+      "options": {
+        "off": "Off",
+        "selection": "Selected text",
+        "clipboard": "Clipboard"
+      }
+    },
+    "translate_deepl_api_key": {
+      "label": "Translate: DeepL API Key",
+      "description": "Required only if DeepL is selected above"
+    },
+    "translate_provider": {
+      "label": "Translate: Service Provider",
+      "description": "Translation service used by the Translate panel",
+      "options": {
+        "google": "Google Translate",
+        "deepl": "DeepL"
+      }
+    },
+    "translate_target_lang": {
+      "label": "Translate: Default Target Language",
+      "description": "Target language preselected the first time the Translate panel opens (e.g. en, vi, fr)"
+    },
     "video_path": {
       "description": "Where recordings are saved. Leave empty for ~/Videos.",
       "label": "Video Path"
@@ -196,6 +221,7 @@
     "record_fullscreen_mp4": "Rec FS",
     "record_gif": "GIF",
     "record_mp4": "Record",
+    "translate": "Translate",
     "window": "Window"
   },
   "tooltips": {
@@ -210,6 +236,36 @@
     "qr": "Scan a QR or barcode",
     "record": "Record a screen region as GIF or MP4",
     "record_fullscreen": "Record the entire screen"
+  },
+  "translate": {
+    "clear": "Clear text (Ctrl+Shift+X)",
+    "clipboard_empty": "Clipboard has no text to paste.",
+    "copied": "Translation copied to clipboard",
+    "copy": "Copy translation (Ctrl+Shift+C)",
+    "detect": "Detect language",
+    "detected": "{lang} - detected",
+    "errors": {
+      "connection": "Connection error - is the network up?",
+      "deepl_auth": "Authorization failed: Invalid DeepL API key",
+      "deepl_no_key": "DeepL API Key is not present",
+      "deepl_quota": "Quota exceeded: DeepL limit reached",
+      "generic": "Translation error",
+      "invalid_target": "Invalid target language code",
+      "rate_limit": "Rate limit exceeded: Please slow down",
+      "server": "Internal Server Error / Service Unavailable: Try again later",
+      "speech": "Could not play speech (check mpv and the network).",
+      "too_long": "Text is longer than {max} characters."
+    },
+    "listen": "Listen",
+    "output_placeholder": "Translation",
+    "paste": "Paste from clipboard",
+    "placeholder": "Enter text",
+    "recent": "Recent:",
+    "retry": "Retry",
+    "run": "Translate now (Ctrl+Enter)",
+    "swap": "Swap languages (Ctrl+Shift+S)",
+    "title": "Translate",
+    "translating": "Translating…"
   },
   "widget": {
     "recording": "Recording — click to stop",

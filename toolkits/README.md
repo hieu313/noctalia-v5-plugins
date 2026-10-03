@@ -20,7 +20,7 @@ not the original implementation.
 | Field | Value |
 | --- | --- |
 | ID | `hieunm3103/toolkits` |
-| Entries | Bar widget: `widget`; control-center shortcut: `toggle`; panels: `panel` (standard tools), `panel-legacy` (legacy layout), `result` (result view); service: `service` |
+| Entries | Bar widget: `widget`; control-center shortcut: `toggle`; panels: `panel` (standard tools), `panel-legacy` (legacy layout), `result` (result view), `translate` (translator); service: `service` |
 
 ## Requirements
 
@@ -39,7 +39,8 @@ reported when that feature is started.
 - **`stat`** — recording file size
 - **`pkill`** — stopping active recording backends
 - **`xdg-open`** — opening URLs, OCR search results, and shared-link targets
-- **`mpv`** — open recording preview in legacy mode subpanel 
+- **`mpv`** — open recording preview in legacy mode subpanel; Translate read-aloud
+- **`wl-paste`** (wl-clipboard) — Translate autofill from the selection
 - **`pactl`** — resolve the default audio source for single-source wf-recorder / wl-screenrec recording
 
 Recording requires at least one backend:
@@ -71,7 +72,7 @@ The main panel has two layouts, selected by the `panel-mode` setting (default:
 **Standard**):
 
 - **Standard** — a dense grid grouped into tinted sections (`panel`, 380×260).
-- **Legacy** — recreates the Noctalia-v4 layout (`panel-legacy`, 380×260).
+- **Legacy** — recreates the Noctalia-v4 layout (`panel-legacy`, 380×350): a 4-column grid that wraps onto new rows as tools are added.
 
 ### Legacy mode
 Legacy mode recreates the original Noctalia v4 screen-toolkit layout:
@@ -103,7 +104,7 @@ Open the standard tools panel:
 noctalia msg panel-toggle hieunm3103/toolkits:panel
 ```
 
-Open the legacy tools panel (the 4×2 grid with subpanels):
+Open the legacy tools panel (the 4-column grid with subpanels):
 
 ```sh
 noctalia msg panel-toggle hieunm3103/toolkits:panel-legacy
@@ -113,6 +114,12 @@ Open the result panel (shows the last capture/recording output):
 
 ```sh
 noctalia msg panel-toggle hieunm3103/toolkits:result
+```
+
+Open the Translate panel directly (e.g. from a compositor keybind):
+
+```sh
+noctalia msg panel-toggle hieunm3103/toolkits:translate
 ```
 
 The tools panel contains the capture actions. When a capture tool finishes, a
@@ -153,6 +160,44 @@ only holds the tools. Results persist across restarts in the plugin's data
 directory; the capture previews live in `/tmp` and are only kept for the
 session.
 
+### Translate
+
+The **Translate** tile opens a Google-Translate-style panel
+(`hieunm3103/toolkits:translate`), stacked vertically instead of side by side:
+
+- a language bar — source (`Detect language` or a fixed language), a swap
+  button, and the target language, plus chips for the last few target
+  languages;
+- the source text box — translation runs automatically once you stop typing,
+  or immediately with Ctrl+Enter / the translate button. Below it: paste from
+  the clipboard, read aloud, a `n / 5000` character counter and clear;
+- the translation box — read aloud and copy, a retry button when a request
+  fails, and dictionary alternatives grouped by part of speech for short
+  queries (Google only).
+
+Swap trades the two languages and moves the translation into the source box;
+with `Detect language` the detected language takes the target's place. The
+source text and language choices are kept while Noctalia runs.
+
+Keyboard shortcuts inside the panel: Ctrl+Enter translates now, Ctrl+Shift+C
+copies the translation, Ctrl+Shift+S swaps, Ctrl+Shift+X clears and Escape
+closes.
+
+With `translate-autofill` set to `selection` (via `wl-paste --primary`) or
+`clipboard`, opening the panel fills the source box with that text and
+translates it — handy with a compositor keybind on
+`noctalia msg panel-toggle hieunm3103/toolkits:translate`. Text that was
+already autofilled once is not filled again, so reopening the panel keeps your
+work.
+
+Read aloud plays Google Translate's speech endpoint through `mpv`.
+
+Translation goes through Google Translate (`translate.googleapis.com`) or DeepL
+(`api.deepl.com` / `api-free.deepl.com`; free-tier keys end in `:fx` and pick
+the free endpoint automatically), per `translate-provider`. The HTTP layer is
+ported from
+[noctalia/translator](https://github.com/noctalia-dev/official-plugins/tree/main/translator).
+
 ## Settings
 
 All settings live in Settings → Plugins (gear on the plugin's row).
@@ -175,7 +220,11 @@ All settings live in Settings → Plugins (gear on the plugin's row).
 | `record-skip-confirmation` | `bool` | `false` | Save automatically when a recording ends, skipping the save dialog. |
 | `record-copy-to-clipboard` | `bool` | `false` | Finalize to MP4 and copy the file URI when recording ends. |
 | `gif-max-seconds` | `int` | `30` | Cap for GIF recordings (1–600 s). |
-| `panel-mode` | `select` | `standard` | Main panel layout: `standard` (dense grid, 380×260) or `legacy` (4×2 legacy grid, 380×260). |
+| `panel-mode` | `select` | `standard` | Main panel layout: `standard` (dense grid, 380×260) or `legacy` (4-column wrapping grid, 380×350). |
+| `translate-target-lang` | `string` | `en` | Target language preselected the first time the Translate panel opens. |
+| `translate-provider` | `select` | `google` | Translation service for the Translate panel: `google` or `deepl`. |
+| `translate-deepl-api-key` | `string` | *(empty)* | DeepL API key (only needed when `translate-provider` is `deepl`). |
+| `translate-autofill` | `select` | `off` | Fill the Translate panel on open from the `selection` (primary selection) or the `clipboard`. |
 
 ## IPC
 
@@ -257,7 +306,7 @@ Summary of every service command:
 - **Two panel entries, one layout setting.** Panel size is host-owned: the host
   sizes each `[[panel]]` entry from its `width`/`height`, and there is no runtime
   resize. So the two layouts are two entries sharing `panel.luau`:
-  `panel` (380×260, the standard grid) and `panel-legacy` (380×260, the legacy grid).
+  `panel` (380×260, the standard grid) and `panel-legacy` (380×350, the legacy grid).
   The `panel-mode` setting picks which one `toggle` opens; changing the setting
   only affects which panel opens next time; an already-open panel keeps its
   current size until closed.

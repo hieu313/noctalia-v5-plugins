@@ -50,7 +50,14 @@ local CAPTURE_ACTIONS = {
   record = true, recordMp4 = true, recordFullscreen = true, recordFullscreenMp4 = true,
 }
 
+local TRANSLATE_PANEL_ID = "hieunm3103/toolkits:translate"
+
 local function runTool(action)
+  if action == "translate" then
+    panel.close()
+    noctalia.togglePanel(TRANSLATE_PANEL_ID)
+    return
+  end
   if action == "record" or action == "recordFullscreen" then noctalia.state.set("recordFormat", "gif")
   elseif action == "recordMp4" or action == "recordFullscreenMp4" then noctalia.state.set("recordFormat", "mp4") end
   if CAPTURE_ACTIONS[action] then panel.close() end
@@ -82,6 +89,7 @@ local TOOLS = {
   { action = "palette", label_key = "tools.palette", glyph = "color-swatch" },
   { action = "lens", label_key = "tools.lens", glyph = "search" },
   { action = "measure", label_key = "tools.measure", glyph = "ruler" },
+  { action = "translate", label_key = "tools.translate", glyph = "language" },
 }
 
 local ANNOTATE_TOOLS = {
@@ -107,7 +115,11 @@ local TOOLS_LEGACY = {
   { id = "record", action = "view_record", label_key = "tools.record", glyph = "video" },
   { id = "measure", action = "measure", label_key = "tools.measure", glyph = "ruler" },
   { id = "lens", action = "lens", label_key = "tools.lens", glyph = "search" },
+  { id = "translate", action = "translate", label_key = "tools.translate", glyph = "language" },
 }
+
+-- Legacy grid: fixed-width rows that wrap, so adding a tool adds a row.
+local LEGACY_COLS = 4
 
 -- ── Keyboard Navigation State & Helpers ────────────────────────────────────
 
@@ -302,11 +314,20 @@ local function legacyTile(t)
 end
 
 local function legacyGrid()
-  local row1, row2 = {}, {}
-  for i, t in ipairs(TOOLS_LEGACY) do table.insert(i <= 4 and row1 or row2, legacyTile(t)) end
-  return ui.column({ gap = 10, paddingV = 15, paddingH = 20, radius = 18, fill = "surface_variant" }, {
-    ui.row({ flexGrow = 1, gap = 0 }, row1), ui.row({ flexGrow = 1, gap = 0 }, row2),
-  })
+  local rows, current = {}, {}
+  for _, t in ipairs(TOOLS_LEGACY) do
+    table.insert(current, legacyTile(t))
+    if #current == LEGACY_COLS then
+      table.insert(rows, ui.row({ flexGrow = 1, gap = 0 }, current))
+      current = {}
+    end
+  end
+  if #current > 0 then
+    -- Pad the last row so its tiles keep the column width instead of stretching.
+    while #current < LEGACY_COLS do table.insert(current, ui.spacer({ flexGrow = 1 })) end
+    table.insert(rows, ui.row({ flexGrow = 1, gap = 0 }, current))
+  end
+  return ui.column({ gap = 10, paddingV = 15, paddingH = 20, radius = 18, fill = "surface_variant" }, rows)
 end
 
 -- Subpanels for legacy mode: annotate and record.
@@ -416,6 +437,33 @@ end
 
 -- ── Keyboard Handler ───────────────────────────────────────────────────────
 
+-- Legacy mode: Up/Down move one row in the same column, wrapping between the
+-- first and last row (the last row may be shorter).
+local function legacyVertical(index, dir, count)
+  local col = (index - 1) % LEGACY_COLS + 1
+  local nextIndex = index + dir * LEGACY_COLS
+  if nextIndex >= 1 and nextIndex <= count then return nextIndex end
+  if dir > 0 then return col end
+  return col + LEGACY_COLS * math.floor((count - col) / LEGACY_COLS)
+end
+
+-- Standard mode: Up/Down move between the three sections (wrapping), landing on
+-- the tile at the same relative position in the next row.
+local function standardVertical(index, dir)
+  local sections = { TOOLS, ANNOTATE_TOOLS, RECORD_TOOLS }
+  local start, sec = 0, 1
+  while index > start + #sections[sec] do
+    start += #sections[sec]
+    sec += 1
+  end
+  local col = index - start
+  local nextSec = (sec - 1 + dir) % #sections + 1
+  local nextStart = 0
+  for i = 1, nextSec - 1 do nextStart += #sections[i] end
+  local nextCol = math.floor((col - 1) * #sections[nextSec] / #sections[sec]) + 1
+  return nextStart + nextCol
+end
+
 function onKey(chord, pressed)
   if not pressed then return end
   local key = tostring(chord):lower()
@@ -440,17 +488,17 @@ function onKey(chord, pressed)
     focusedIndex = (focusedIndex - 2) % #items + 1
   elseif key == "down" then
     if mode == "legacy" and activeView == "main" then
-      focusedIndex = focusedIndex <= 4 and (focusedIndex + 4) or (focusedIndex - 4)
+      focusedIndex = legacyVertical(focusedIndex, 1, #items)
     elseif mode == "standard" then
-      focusedIndex = (focusedIndex <= 6 and math.min(7 + math.floor((focusedIndex - 1) / 2), 9)) or (focusedIndex <= 9 and (10 + (focusedIndex - 7)) or ((focusedIndex - 10) + 1))
+      focusedIndex = standardVertical(focusedIndex, 1)
     else
       focusedIndex = (focusedIndex % #items) + 1
     end
   elseif key == "up" then
     if mode == "legacy" and activeView == "main" then
-      focusedIndex = focusedIndex > 4 and (focusedIndex - 4) or (focusedIndex + 4)
+      focusedIndex = legacyVertical(focusedIndex, -1, #items)
     elseif mode == "standard" then
-      focusedIndex = (focusedIndex >= 10 and math.min(7 + (focusedIndex - 10), 9)) or (focusedIndex >= 7 and ((focusedIndex - 7) * 2 + 1) or math.min(10 + math.floor((focusedIndex - 1) / 2), 13))
+      focusedIndex = standardVertical(focusedIndex, -1)
     else
       focusedIndex = (focusedIndex - 2) % #items + 1
     end
