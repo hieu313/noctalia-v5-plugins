@@ -9,7 +9,7 @@
 id = "hieunm3103/toolkits"
 name = "Toolkits"
 version = "1.1.0"
-plugin_api = 18
+plugin_api = 22
 author = "hieunm3103"
 license = "MIT"
 icon = "crosshair"
@@ -26,7 +26,6 @@ dependencies = [
   "ffmpeg",
   "ffprobe",
   "jq",
-  "translate-shell",
   "bc",
   "stat",
   "pkill",

@@ -176,7 +176,7 @@
     },
     "translate_provider": {
       "label": "Translate: Service Provider",
-      "description": "Translation service used by the Translate panel",
+      "description": "Translation service used by the Translate panel and OCR translation",
       "options": {
         "google": "Google Translate",
         "deepl": "DeepL"

@@ -15,6 +15,8 @@
 -- Recording runs `wl-screenrec` (preferred) or `wf-recorder`. The raw output
 -- lands in /tmp as MP4; GIF is produced on save via record.sh convert-gif.
 
+local translator = require("./lib/translator.luau")
+
 local PANEL_ID = "hieunm3103/toolkits:panel"
 local LEGACY_PANEL_ID = "hieunm3103/toolkits:panel-legacy"
 local RESULT_PANEL_ID = "hieunm3103/toolkits:result"
@@ -411,31 +413,24 @@ local function ocrSearch(payload)
   noctalia.runAsync({ "xdg-open", url })
 end
 
+-- Translates the OCR text through the shared Google/DeepL client, so it follows
+-- the same "translate-provider" setting as the Translate panel.
 local function ocrTranslate(payload)
   local result = noctalia.state.get("ocrResult")
   local text = if type(payload) == "table" and type(payload.text) == "string"
     then payload.text
     else type(result) == "table" and result.text or nil
-  if not text or text == "" then return end
-  if not noctalia.commandExists("trans") then
-    noctalia.notifyError(noctalia.tr("messages.missing_dep", { dep = "translate-shell" }))
-    return
-  end
+  if not text or trim(text) == "" then return end
   publish("translateResult", nil)
   local targetLang = if type(payload) == "table" then payload.lang else payload
   local lang = if type(targetLang) == "string" and targetLang ~= "" then targetLang else "en"
-  noctalia.runAsync({ "trans", "-brief", "-no-bidi", "-to", lang, text }, function(res)
-    if res.exitCode ~= 0 then
-      publish("translateResult", noctalia.tr("messages.translate_failed"))
+  translator.translate(trim(text), "auto", lang, function(translated, err)
+    if not translated then
+      log(`ocr translate failed: {err}`)
+      publish("translateResult", err or noctalia.tr("messages.translate_failed"))
       return
     end
-    -- trans bidi conversion outputs presentation-forms + terminal padding (visual order);
-    -- -no-bidi gives logical order (U+0600) for Qt/HarfBuzz shaping. Collapse stray newlines.
-    local out = trim(res.stdout or "")
-    out = out:gsub("%s+", " ")
-    -- strip BOM FEFF that trans emits in bidi mode
-    out = out:gsub("^\239\187\191", "")
-    publish("translateResult", out)
+    publish("translateResult", trim(translated))
   end)
 end
 

@@ -6,6 +6,8 @@
 -- copy / search / translate / share actions. It is a thin client: it reads the
 -- published state and dispatches actions through the "command" channel.
 
+local translator = require("./lib/translator.luau")
+
 local panelOpen = false
 
 local recordState = noctalia.state.get("recordState") or "idle"
@@ -23,23 +25,6 @@ local paletteColors = noctalia.state.get("paletteColors") or {}
 local ocrTab = "original"
 -- nil until the user picks one; falls back to the "translate-target-lang" setting.
 local selectedTranslateLang = nil
-local translateLanguages = {
-  { code = "en", name = "English" },
-  { code = "vi", name = "Tiếng Việt" },
-  { code = "ar", name = "العربية" },
-  { code = "fr", name = "Français" },
-  { code = "de", name = "Deutsch" },
-  { code = "es", name = "Español" },
-  { code = "zh", name = "中文" },
-  { code = "ja", name = "日本語" },
-  { code = "ru", name = "Русский" },
-  { code = "pt", name = "Português" },
-  { code = "it", name = "Italiano" },
-  { code = "tr", name = "Türkçe" },
-  { code = "fa", name = "فارسی" },
-  { code = "he", name = "עברית" },
-  { code = "ur", name = "اردو" },
-}
 local render -- forward for tab callbacks inside renderOcr
 
 -- ── Helpers ────────────────────────────────────────────────────────────────
@@ -444,17 +429,12 @@ local function renderOcr()
   end
   -- Controls — icon-only with tooltips + searchable language picker (replaces raw "ar" input)
   -- The configured target language leads the list and is the default pick.
-  local preferredLang = noctalia.getConfig("translate-target-lang")
-  preferredLang = if type(preferredLang) == "string" and preferredLang ~= "" then preferredLang:lower() else "en"
+  local preferredLang = translator.defaultTarget()
   local langOptions = {}
   local langCodes = {}
-  local preferredName = preferredLang
-  for _, l in ipairs(translateLanguages) do
-    if l.code == preferredLang then preferredName = l.name end
-  end
-  table.insert(langOptions, preferredLang .. " — " .. preferredName)
+  table.insert(langOptions, preferredLang .. " — " .. translator.langName(preferredLang))
   table.insert(langCodes, preferredLang)
-  for _, l in ipairs(translateLanguages) do
+  for _, l in ipairs(translator.LANGUAGES) do
     if l.code ~= preferredLang then
       table.insert(langOptions, l.code .. " — " .. l.name)
       table.insert(langCodes, l.code)

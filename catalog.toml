@@ -39,14 +39,20 @@ tags = ["ai", "utility", "productivity", "development"]
 id = "hieunm3103/toolkits"
 name = "Toolkits"
 version = "1.1.0"
-updated_at = 1791013703
+updated_at = 1791016377
 added_at = 1791013703
 author = "hieunm3103"
 license = "MIT"
 icon = "crosshair"
 description = "Personal toolbox: color picker, OCR, QR, palette, lens, annotate, measure, recording, translate and more."
-plugin_api = 18
+plugin_api = 22
 tags = ["recording", "utility", "language", "bar", "panel", "shortcut", "service", "hyprland", "niri", "sway"]
+
+[[plugin.release]]
+plugin_api = 18
+version = "1.1.0"
+updated_at = 1791016377
+rev = "cfeb5a58e7c17161e6b8d6dbbf6bfd3cf77091e6"
 
 [[plugin.release]]
 plugin_api = 13

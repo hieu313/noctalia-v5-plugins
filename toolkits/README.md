@@ -53,7 +53,6 @@ Optional:
 
 - **`swappy`** / **`satty`** / **`tensaku`** — annotation editor (Markup tool)
 - **`gimp`** — fallback annotation editor when swappy/satty/tensaku are missing
-- **`translate-shell`** (`trans`) — OCR translation
 - **hyprctl** — annotate the focused window (Hyprland)
 - **`niri`** — annotate the focused window (Niri)
 
@@ -222,7 +221,7 @@ All settings live in Settings → Plugins (gear on the plugin's row).
 | `gif-max-seconds` | `int` | `30` | Cap for GIF recordings (1–600 s). |
 | `panel-mode` | `select` | `standard` | Main panel layout: `standard` (dense grid, 380×260) or `legacy` (4-column wrapping grid, 380×350). |
 | `translate-target-lang` | `string` | `en` | Target language preselected the first time the Translate panel opens. |
-| `translate-provider` | `select` | `google` | Translation service for the Translate panel: `google` or `deepl`. |
+| `translate-provider` | `select` | `google` | Translation service for the Translate panel and OCR translation: `google` or `deepl`. |
 | `translate-deepl-api-key` | `string` | *(empty)* | DeepL API key (only needed when `translate-provider` is `deepl`). |
 | `translate-autofill` | `select` | `off` | Fill the Translate panel on open from the `selection` (primary selection) or the `clipboard`. |
 
@@ -295,7 +294,7 @@ Summary of every service command:
 | `recordCopy` | — | Finalize to MP4 and copy the file URI |
 | `recordDiscard` | — | Discard the finished recording |
 | `ocrSearch` | optional `{text}` | Search OCR text with the configured engine |
-| `ocrTranslate` | language code | Translate OCR text |
+| `ocrTranslate` | language code | Translate OCR text (via `translate-provider`) |
 | `share` | file path | Upload a file and copy the link |
 | `clearResult` | — | Clear the current result panel state |
 | `clearHistory` | — | Clear the color history |
