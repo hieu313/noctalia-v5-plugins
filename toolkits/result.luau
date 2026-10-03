@@ -21,9 +21,11 @@ local translateResult = noctalia.state.get("translateResult")
 local qrResult = noctalia.state.get("qrResult")
 local paletteColors = noctalia.state.get("paletteColors") or {}
 local ocrTab = "original"
-local selectedTranslateLang = "ar"
+-- nil until the user picks one; falls back to the "translate-target-lang" setting.
+local selectedTranslateLang = nil
 local translateLanguages = {
   { code = "en", name = "English" },
+  { code = "vi", name = "Tiếng Việt" },
   { code = "ar", name = "العربية" },
   { code = "fr", name = "Français" },
   { code = "de", name = "Deutsch" },
@@ -54,6 +56,26 @@ end
 local function copyText(text)
   if not text or text == "" then return end
   noctalia.copyToClipboard(text, "text/plain;charset=utf-8")
+end
+
+-- copyToClipboard only takes text, so image bytes go through wl-copy's stdin.
+local function copyImage(path)
+  if not path or path == "" or (noctalia.fileExists and not noctalia.fileExists(path)) then
+    noctalia.notifyError(tr("messages.image_missing"))
+    return
+  end
+  if not noctalia.commandExists("wl-copy") then
+    noctalia.notifyError(tr("messages.missing_dep", { dep = "wl-clipboard" }))
+    return
+  end
+  local quoted = "'" .. path:gsub("'", "'\\''") .. "'"
+  noctalia.runAsync("wl-copy --type image/png < " .. quoted, function(res)
+    if res.exitCode == 0 then
+      noctalia.notify(tr("plugin_name"), tr("messages.image_copied"))
+    else
+      noctalia.notifyError(tr("messages.image_copy_failed"))
+    end
+  end)
 end
 
 local function isRTL(text)
@@ -368,7 +390,7 @@ local function renderOcr()
     table.insert(scrollChildren, ui.row({ justify = "space_between", align = "center" }, {
       ui.row({ gap = 6, align = "center" }, {
         ui.glyph({ name = "photo", size = 14, color = "primary" }),
-        ui.label({ text = tr("panel.ocr_source") ~= "panel.ocr_source" and tr("panel.ocr_source") or "Source", fontSize = 11, fontWeight = "bold", color = "on_surface_variant" }),
+        ui.label({ text = tr("panel.ocr_source"), fontSize = 11, fontWeight = "bold", color = "on_surface_variant" }),
       }),
       ui.label({ text = imgW > 0 and string.format("%dx%d", imgW, imgH) or "", fontSize = 10, color = "on_surface_variant" }),
     }))
@@ -415,22 +437,35 @@ local function renderOcr()
         ui.label({
           text = displayText,
           fontSize = 13,
-          textAlign = if rtl then "right" else "left",
+          textAlign = if rtl then "end" else "start",
           fontFamily = if rtl then "Noto Naskh Arabic" else nil,
         }),
       }))
   end
   -- Controls — icon-only with tooltips + searchable language picker (replaces raw "ar" input)
+  -- The configured target language leads the list and is the default pick.
+  local preferredLang = noctalia.getConfig("translate-target-lang")
+  preferredLang = if type(preferredLang) == "string" and preferredLang ~= "" then preferredLang:lower() else "en"
   local langOptions = {}
   local langCodes = {}
+  local preferredName = preferredLang
   for _, l in ipairs(translateLanguages) do
-    table.insert(langOptions, l.code .. " — " .. l.name)
-    table.insert(langCodes, l.code)
+    if l.code == preferredLang then preferredName = l.name end
   end
+  table.insert(langOptions, preferredLang .. " — " .. preferredName)
+  table.insert(langCodes, preferredLang)
+  for _, l in ipairs(translateLanguages) do
+    if l.code ~= preferredLang then
+      table.insert(langOptions, l.code .. " — " .. l.name)
+      table.insert(langCodes, l.code)
+    end
+  end
+  local currentLang = selectedTranslateLang or preferredLang
   local selectedIdx = 0
-  for i, c in ipairs(langCodes) do if c == selectedTranslateLang then selectedIdx = i - 1; break end end
+  for i, c in ipairs(langCodes) do if c == currentLang then selectedIdx = i - 1; break end end
   local controls = {
     ui.button({ glyph = "copy", variant = "ghost", controlSize = "sm", tooltip = tr("panel.copy_text"), onClick = function() copyText(ocrTab == "translation" and translateResult or ocrEditText) end }),
+    ui.button({ glyph = "photo", variant = "ghost", controlSize = "sm", tooltip = tr("panel.copy_image"), enabled = ocrResult.capturePath ~= nil and ocrResult.capturePath ~= "", onClick = function() copyImage(ocrResult.capturePath) end }),
   }
   if url then
     table.insert(controls, ui.button({ glyph = "external-link", variant = "ghost", controlSize = "sm", tooltip = tr("panel.open_url"), onClick = function() noctalia.runAsync({ "xdg-open", url }) end }))
@@ -451,7 +486,7 @@ local function renderOcr()
       render()
     end,
   }))
-  table.insert(controls, ui.button({ glyph = "language", variant = "primary", controlSize = "sm", tooltip = tr("panel.translate"), onClick = function() send("ocrTranslate", { lang = selectedTranslateLang, text = ocrEditText }) end }))
+  table.insert(controls, ui.button({ glyph = "language", variant = "primary", controlSize = "sm", tooltip = tr("panel.translate"), onClick = function() send("ocrTranslate", { lang = currentLang, text = ocrEditText }) end }))
   return ui.column({ flexGrow = 1, gap = 8 }, {
     ui.row({ gap = 4, align = "center" }, controls),
     ui.scroll({ flexGrow = 1, gap = 8 }, scrollChildren),
@@ -548,6 +583,7 @@ end
 
 function onOpen(_context)
   panelOpen = true
+  selectedTranslateLang = nil -- each result starts from the configured target language
   refresh()
   render()
 end
